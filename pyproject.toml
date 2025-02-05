@@ -1,0 +1,49 @@
+[build-system]
+requires = [
+    "hatchling>=1.13.0",
+    "hatch-vcs>=0.3.0",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "mlww"
+dynamic = ["version"]
+description = "Machine learning weight window generation for Monte Carlo neutron transport codes"
+readme = "README.md"
+license = { text = "MIT" }  # SPDX short identifier
+authors = [
+  { name = "Jordan Northrop", email = "northroj@oregonstate.edu" },
+]
+maintainers = [
+  { name = "Jordan Northrop", email = "northroj@oregonstate.edu" },
+]
+requires-python = ">=3.8"
+
+dependencies = [
+    "numpy",  # compatible versions controlled through scipy
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage = "https://github.com/northroj/mlww"
+Documentation = "https://thisdoesnotexistyet"
+"Bug Tracker" = "https://github.com/northroj/mlww/issues"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/mlww/_version.py"
