@@ -20,7 +20,10 @@ maintainers = [
 requires-python = ">=3.8"
 
 dependencies = [
-    "numpy",  # compatible versions controlled through scipy
+    "numpy",
+    "mcdc",
+    "pytest",
+    "os",
 ]
 
 classifiers = [
