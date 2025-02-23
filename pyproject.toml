@@ -22,8 +22,6 @@ requires-python = ">=3.8"
 dependencies = [
     "numpy",
     "mcdc",
-    "pytest",
-    "os",
 ]
 
 classifiers = [
