@@ -171,7 +171,7 @@ class GeometryGeneration:
         for i in range(self.x):
             for j in range(self.y):
                 for k in range(self.z):
-                    if xs == None:
+                    if xs is None:
                         scatter_xs = np.random.random()
                         capture_xs = np.random.random()
                         line = f"m_{i}_{j}_{k} = mcdc.material(capture=np.array([{capture_xs}]), scatter=np.arrray([{scatter_xs}]))"
@@ -180,4 +180,87 @@ class GeometryGeneration:
                     lines.append(line)
 
         return lines
+    
+    def generate_sources(self, xs=None):
+        lines = ["# Set sources"]
 
+        for i in range(self.x):
+            for j in range(self.y):
+                for k in range(self.z):
+                    if xs is None:
+                        random_source_strength = np.random.random()
+                        line = f"mcdc.source(x=[{i}, {i+1}], y=[{j},{j+1}], z=[{k},{k+1}], isotropic=True, prob={random_source_strength})"
+                    else:
+                        line = f"mcdc.source(x=[{i}, {i+1}], y=[{j},{j+1}], z=[{k},{k+1}], isotropic=True, prob={xs[i,j,k,2]})"
+                    lines.append(line)
+
+        return lines
+
+
+class RandomGeneration:
+    def __init__(self, size_x, size_y, size_z):
+        """
+        Initialize the 4D array with random values.
+        Dimensions: (x, y, z, data_type), where data_type corresponds to:
+        0 - Capture Cross Section
+        1 - Scattering Cross Section
+        2 - Source Strength
+        """
+        self.size = (size_x, size_y, size_z)
+        
+        # Initialize random values
+        #self.grid = np.random.rand(size_x, size_y, size_z, 3)
+        self.grid = np.zeros((size_x, size_y, size_z, 3))
+    
+    def randomize_structure(self):
+        """
+        Randomly generates a structured pattern by placing and expanding blobs.
+        """
+        total_cells = self.size[0] * self.size[1] * self.size[2]
+        num_blobs = np.random.randint(1, max(2, total_cells // 10))
+        
+        for _ in range(num_blobs):
+            self.generate_blob()
+    
+    def generate_blob(self):
+        """
+        Generates a single blob with random properties and expands it randomly.
+        """
+        # Generate random properties for the blob
+        blob_values = np.random.rand(3)  # Capture, Scatter, Source
+        
+        # Pick a random starting location
+        x, y, z = np.random.randint(0, self.size[0]), np.random.randint(0, self.size[1]), np.random.randint(0, self.size[2])
+        self.grid[x, y, z] = blob_values
+        
+        # Determine the number of steps
+        total_cells = self.size[0] * self.size[1] * self.size[2]
+        num_steps = np.random.randint(1, max(2, total_cells // 10))
+        
+        for _ in range(num_steps):
+            out_of_range = True
+            while out_of_range:
+                # Pick a random direction: -1 or +1 in x, y, or z
+                direction = np.random.choice(['x', 'y', 'z'])
+                step = np.random.choice([-1, 1])
+                
+                new_x, new_y, new_z = x, y, z
+                if direction == 'x':
+                    new_x += step
+                elif direction == 'y':
+                    new_y += step
+                else:
+                    new_z += step
+                
+                # Ensure the step remains within bounds
+                if 0 <= new_x < self.size[0] and 0 <= new_y < self.size[1] and 0 <= new_z < self.size[2]:
+                    x, y, z = new_x, new_y, new_z
+                    self.grid[x, y, z] = blob_values
+                    out_of_range = False
+
+    
+    def get_grid(self):
+        """
+        Return the generated grid.
+        """
+        return self.grid
