@@ -23,6 +23,7 @@ dependencies = [
     "numpy",
     "mcdc",
     "matplotlib",
+    "h5py",
 ]
 
 classifiers = [

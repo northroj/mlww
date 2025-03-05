@@ -1,5 +1,8 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+import h5py
+import subprocess
 
 class InputGeneration:
     def __init__(self):
@@ -174,9 +177,9 @@ class GeometryGeneration:
                     if xs is None:
                         scatter_xs = np.random.random()
                         capture_xs = np.random.random()
-                        line = f"m_{i}_{j}_{k} = mcdc.material(capture=np.array([{capture_xs}]), scatter=np.arrray([{scatter_xs}]))"
+                        line = f"m_{i}_{j}_{k} = mcdc.material(capture=np.array([{capture_xs}]), scatter=np.array([[{scatter_xs}]]))"
                     else:
-                        line = f"m_{i}_{j}_{k} = mcdc.material(capture=np.array([{xs[i,j,k,0]}]), scatter=np.arrray([{xs[i,j,k,1]}]))"
+                        line = f"m_{i}_{j}_{k} = mcdc.material(capture=np.array([{xs[i,j,k,0]}]), scatter=np.array([[{xs[i,j,k,1]}]]))"
                     lines.append(line)
 
         return lines
@@ -212,12 +215,14 @@ class RandomGeneration:
         #self.grid = np.random.rand(size_x, size_y, size_z, 3)
         self.grid = np.zeros((size_x, size_y, size_z, 3))
     
-    def randomize_structure(self):
+    def randomize_structure(self, seed=None):
         """
         Randomly generates a structured pattern by placing and expanding blobs.
         """
+        if seed is not None:
+            np.random.seed(seed)
         total_cells = self.size[0] * self.size[1] * self.size[2]
-        num_blobs = np.random.randint(1, max(2, total_cells // 10))
+        num_blobs = np.random.randint(1, max(2, total_cells // 8))
         
         for _ in range(num_blobs):
             self.generate_blob()
@@ -235,7 +240,7 @@ class RandomGeneration:
         
         # Determine the number of steps
         total_cells = self.size[0] * self.size[1] * self.size[2]
-        num_steps = np.random.randint(1, max(2, total_cells // 10))
+        num_steps = np.random.randint(1, max(2, total_cells // 8))
         
         for _ in range(num_steps):
             out_of_range = True
@@ -264,3 +269,104 @@ class RandomGeneration:
         Return the generated grid.
         """
         return self.grid
+    
+    def plot_2d_grid(self, data_grid, data_type=0, z_slice=0):
+        """
+        Plots a 2D heatmap of the grid at z=0 for the specified data type.
+        data_type: 0 (Capture Cross Section), 1 (Scattering Cross Section), or 2 (Source Strength)
+        """
+        if data_type not in [0, 1, 2]:
+            raise ValueError("data_type must be 0, 1, or 2")
+        if z_slice > self.size[2]:
+            raise ValueError("Z value must be in the grid dimension (0 indexed)")
+        
+        plt.figure(figsize=(8, 8))
+        plt.imshow(data_grid[:, :, z_slice, data_type], cmap='viridis', origin='lower', extent=[0, self.size[0], 0, self.size[1]])
+        plt.colorbar(label=['Capture Cross Section', 'Scattering Cross Section', 'Source Strength'][data_type])
+        plt.xlabel("X Axis")
+        plt.ylabel("Y Axis")
+        plt.title(f"2D Grid Visualization - {['Capture Cross Section', 'Scattering Cross Section', 'Source Strength'][data_type]}")
+        plt.show()
+    
+    def write_to_hdf5(self, filename, directory=None, wipe=False):
+        """
+        Writes the 4D grid to an HDF5 file.
+        If wipe is True, it clears the file before adding the new input.
+        If wipe is False, it appends the new input under the lowest available case number.
+        """
+        mode = 'w' if wipe else 'a'
+
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+            filepath = os.path.join(directory, filename)
+        else:
+            filepath = filename
+        
+        with h5py.File(filepath, mode) as hdf5_file:
+            if wipe:
+                case_number = 0
+            else:
+                existing_cases = [int(key.split('_')[1]) for key in hdf5_file.keys() if key.startswith("case_")]
+                case_number = min(set(range(len(existing_cases) + 1)) - set(existing_cases), default=0)
+            
+            case_name = f"case_{case_number}"
+            hdf5_file.create_dataset(case_name, data=self.grid)
+
+
+
+class RunMcdc:
+    def run_cases(self, directory, start=0, end=None, use_numba=True, tally_filename="tally_results.h5"):
+        """
+        Runs the case_#.py files in the specified directory within the given range.
+
+        :param directory: Path to the directory containing case_#.py files.
+        :param start: The starting case number.
+        :param end: The ending case number. If None, it is set to the largest case number found in the directory.
+        :param use_numba: If True, passes "--mode=numba" as an argument when running the script.
+        :param tally_filename: Name of the HDF5 file where tally results will be stored.
+        """
+        if end is None:
+            case_numbers = [int(f.split("_")[1].split(".")[0]) for f in os.listdir(directory) if f.startswith("case_") and f.endswith(".py")]
+            end = max(case_numbers) if case_numbers else start
+        
+        args = ["--mode=numba"] if use_numba else []
+        tally_path = os.path.join(directory, tally_filename)
+        
+        for case_num in range(start, end + 1):
+            case_file = f"case_{case_num}.py"
+            if os.path.isfile(os.path.join(directory, case_file)):
+                print(f"Running {case_file} with arguments: {args} in directory {directory}")
+                subprocess.run(["python", case_file] + args, check=True, cwd=directory)
+                self.collect_tally(directory, case_num, tally_path)
+            else:
+                print(f"Warning: {case_file} not found.")
+    
+    def collect_tally(self, directory: str, case_num: int, tally_path: str):
+        """
+        Collects the tally data from output.h5 and stores it in the tally HDF5 file.
+
+        :param directory: Path to the directory containing the output.h5 file.
+        :param case_num: The case number for which the tally is being collected.
+        :param tally_path: Path to the HDF5 file where tally results will be stored.
+        """
+        output_file = os.path.join(directory, "output.h5")
+        if not os.path.isfile(output_file):
+            print(f"Warning: {output_file} not found for case {case_num}.")
+            return
+        
+        with h5py.File(output_file, "r") as f:
+            try:
+                tally_data = f["tallies"]["mesh_tally_0"]["flux"]["mean"][:]
+            except KeyError as e:
+                print(f"Error: Could not find expected dataset in {output_file} for case {case_num}: {e}")
+                return
+        
+        with h5py.File(tally_path, "a") as f:
+            dataset_name = f"case_{case_num}"
+            if dataset_name in f:
+                del f[dataset_name]  # Delete existing dataset to overwrite
+            f.create_dataset(dataset_name, data=tally_data)
+            print(f"Stored tally for {dataset_name} in {tally_path}.")
+
+
+
