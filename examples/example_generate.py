@@ -55,4 +55,4 @@ def run_mcdc_cases(directory, start=0):
 
 #add_to_training_data(10000, True)
 #convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
-run_mcdc_cases("../../mcdc_inputs/", start=700)
+run_mcdc_cases("../../mcdc_inputs/", start=870)
