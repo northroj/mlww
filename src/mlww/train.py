@@ -13,6 +13,20 @@ class NeutronDataset(Dataset):
         self.input_data, self.output_data = self.load_data(input_filepath, output_filepath, start_idx, end_idx)
     
     def load_data(self, input_filepath, output_filepath, start_idx, end_idx):
+        """
+        Load the data from the input and output hdf5 files
+
+        Parameters
+        ----------
+        input_filepath : string
+            Path to the hdf5 file that contains the input parameters
+        output_filepath : string
+            Path to the hdf5 file that contains the output tally data
+        start_idx : int
+            Lower case number to start at
+        end_idx : int
+            Upper case number to end at
+        """
         with h5py.File(output_filepath, 'r') as f:
             case_numbers = sorted([int(key.split('_')[1]) for key in f.keys()])
             if end_idx is None:
@@ -67,6 +81,8 @@ class TrainCNN:
         self.val_errors = []
     
     def train(self):
+        """ Train the machine learning model
+        """
         self.model.train()
         prev_val_loss = float('inf')
         for epoch in range(self.max_epochs):
@@ -113,6 +129,8 @@ class TrainCNN:
         return self.val_errors
     
     def plot_errors(self):
+        """ Plot the training and validation accuracy as a function of epoch
+        """
         plt.figure(figsize=(10, 5))
         plt.plot(range(1, len(self.train_errors) + 1), self.train_errors, label='Training Error (%)')
         plt.plot(range(1, len(self.val_errors) + 1), self.val_errors, label='Validation Error (%)')
@@ -123,6 +141,16 @@ class TrainCNN:
         plt.show()
     
     def save_model(self, path, model_name):
+        """
+        Save the model to a .pt file
+
+        Parameters
+        ----------
+        path : string
+            path to the directory to store the trained model file
+        model_name : string
+            name of the model
+        """
         model_filepath = os.path.join(path, model_name + ".pt")
         if os.path.exists(model_filepath):
             os.remove(model_filepath)
@@ -138,6 +166,9 @@ class ModelLoader:
         print(f"Model loaded from {model_path}")
 
     def predict_flux(self, input_grid):
+        """
+        Predict the flux for a set if input data
+        """
         input_tensor = torch.tensor(input_grid, dtype=torch.float32).to(self.device)
         input_tensor = input_tensor.unsqueeze(0).permute(0, 4, 1, 2, 3)  # Reshape for CNN
         with torch.no_grad():
@@ -145,6 +176,23 @@ class ModelLoader:
         return output_tensor.squeeze(0).cpu().numpy()
 
     def compare_flux(self, input_filepath, output_filepath, case_number=0):
+        """
+        Produce the actual flux and predicted flux for a given case in the training data
+
+        Parameters
+        ----------
+        input_filepath : string
+            path to the input hdf5 data
+        output_filepath : string
+            path to the output hdf5 data
+        case_number : int
+            case number to test
+
+        Returns
+        -------
+        numpy.ndarray, numpy.ndarray
+            actual output of the MC/DC simulation and predicted output of the machine learning model
+        """
         case_key = f"case_{case_number}"
         with h5py.File(input_filepath, 'r') as f:
             if case_key not in f:

@@ -31,6 +31,12 @@ class InputGeneration:
         self._add_run()
 
     def set_materials(self, lines=None):
+        """Set the material lines in the MC/DC input
+
+        Parameters
+        ----------
+        lines : list of strings (from GeometryGeneration.generate_materials() )
+        """
         self.sections["materials"] = lines if lines else [
             "# Set materials",
             "m1 = mcdc.material(capture=np.array([1.0]))",
@@ -40,6 +46,12 @@ class InputGeneration:
         self._update_lines()
 
     def set_surfaces(self, lines=None):
+        """Set the surface lines in the MC/DC input
+
+        Parameters
+        ----------
+        lines : list of strings (from GeometryGeneration.generate_surfaces() )
+        """
         self.sections["surfaces"] = lines if lines else [
             "# Set surfaces",
             "s1 = mcdc.surface(\"plane-z\", z=0.0, bc=\"vacuum\")",
@@ -50,6 +62,12 @@ class InputGeneration:
         self._update_lines()
 
     def set_cells(self, lines=None):
+        """Set the cell lines in the MC/DC input
+
+        Parameters
+        ----------
+        lines : list of strings (from GeometryGeneration.generate_cells() )
+        """
         self.sections["cells"] = lines if lines else [
             "# Set cells",
             "mcdc.cell(+s1 & -s2, m2)",
@@ -59,6 +77,12 @@ class InputGeneration:
         self._update_lines()
 
     def set_source(self, lines=None):
+        """Set the source lines in the MC/DC input
+
+        Parameters
+        ----------
+        lines : list of strings (from GeometryGeneration.generate_sources() )
+        """
         self.sections["source"] = lines if lines else [
             "# Set source",
             "mcdc.source(z=[0.0, 6.0], isotropic=True)\n",
@@ -66,6 +90,12 @@ class InputGeneration:
         self._update_lines()
 
     def set_tally(self, lines=None):
+        """Set the tally lines in the MC/DC input
+
+        Parameters
+        ----------
+        lines : list of strings (from GeometryGeneration.generate_tally() )
+        """
         self.sections["tally"] = lines if lines else [
             "# Set tally",
             "mcdc.tally.mesh_tally(",
@@ -77,6 +107,13 @@ class InputGeneration:
         self._update_lines()
 
     def set_settings(self, N_particle=1e3):
+        """Set the settings lines in the MC/DC input
+
+        Parameters
+        ----------
+        N_particle : int
+            Set the number of particles in the simulation
+        """
         self.sections["settings"] = [
             "# Set settings",
             f"mcdc.setting(N_particle={N_particle})\n",
@@ -97,6 +134,15 @@ class InputGeneration:
         self.lines.extend(self.run_line)
 
     def write_to_file(self, filename="mcdc_input.py", directory=None):
+        """Write the MC/DC input to a python file
+
+        Parameters
+        ----------
+        filename : string
+            The name of the file to save to (should be .py)
+        directory : string
+            directory to save the file to
+        """
         if directory:
             os.makedirs(directory, exist_ok=True)
             filepath = os.path.join(directory, filename)
@@ -121,6 +167,12 @@ class GeometryGeneration:
         self.z = z
 
     def generate_surfaces(self):
+        """For given x,y,z lengths, set the appropriate plane surfaces along all integer values inside each side length
+        Returns
+        -------
+        list of strings
+            surface lines
+        """
         lines = ["# Set surfaces"]
 
         # Helper function to generate plane definitions
@@ -139,6 +191,12 @@ class GeometryGeneration:
         return lines
     
     def generate_cells(self):
+        """Construct the cell lines out of the surfaces and materials
+        Returns
+        -------
+        list of strings
+            cell lines
+        """
         lines = ["# Set cells"]
 
         for i in range(self.x):
@@ -156,6 +214,13 @@ class GeometryGeneration:
         return lines
     
     def generate_tally(self):
+        """Produce the tally lines for the mesh defined by the side lengths
+
+        Returns
+        -------
+        list of strings
+            tally lines
+        """
         lines = [
             "# Set tally",
             "mcdc.tally.mesh_tally(",
@@ -169,6 +234,13 @@ class GeometryGeneration:
         return lines
     
     def generate_materials(self, xs=None):
+        """Produce the material lines for each mesh cell
+
+        Returns
+        -------
+        list of strings
+            material lines
+        """
         lines = ["# Set materials"]
 
         for i in range(self.x):
@@ -185,6 +257,13 @@ class GeometryGeneration:
         return lines
     
     def generate_sources(self, xs=None):
+        """Produce the source lines for each mesh cell
+
+        Returns
+        -------
+        list of strings
+            source lines
+        """
         lines = ["# Set sources"]
 
         for i in range(self.x):
@@ -218,6 +297,11 @@ class RandomGeneration:
     def randomize_structure(self, seed=None):
         """
         Randomly generates a structured pattern by placing and expanding blobs.
+
+        Parameters
+        ----------
+        seed : int/float
+            Set numpy's random seed.
         """
         if seed is not None:
             np.random.seed(seed)
@@ -267,13 +351,27 @@ class RandomGeneration:
     def get_grid(self):
         """
         Return the generated grid.
+
+        Returns
+        -------
+        numpy.ndarray
+            4D grid of input parameters
         """
         return self.grid
     
     def plot_2d_grid(self, data_grid, data_type=0, z_slice=0):
         """
-        Plots a 2D heatmap of the grid at z=0 for the specified data type.
+        Plots a 2D heatmap of the grid for the specified data type.
         data_type: 0 (Capture Cross Section), 1 (Scattering Cross Section), or 2 (Source Strength)
+
+        Parameters
+        ----------
+        data_grid : numpy.ndarray
+            Accepts the 4D grid
+        data_type : int
+            Which input parameter to plot
+        z_slice : int
+            Which z layer to slice to show the 2D plot
         """
         if data_type not in [0, 1, 2]:
             raise ValueError("data_type must be 0, 1, or 2")
@@ -293,6 +391,15 @@ class RandomGeneration:
         Writes the 4D grid to an HDF5 file.
         If wipe is True, it clears the file before adding the new input.
         If wipe is False, it appends the new input under the lowest available case number.
+
+        Parameters
+        ----------
+        filename : string
+            Name of the file
+        directory : string
+            Path to the directory to save the hdf5 file
+        wipe : bool
+            Clean the file before writing or not
         """
         mode = 'w' if wipe else 'a'
 
@@ -319,11 +426,18 @@ class RunMcdc:
         """
         Runs the case_#.py files in the specified directory within the given range.
 
-        :param directory: Path to the directory containing case_#.py files.
-        :param start: The starting case number.
-        :param end: The ending case number. If None, it is set to the largest case number found in the directory.
-        :param use_numba: If True, passes "--mode=numba" as an argument when running the script.
-        :param tally_filename: Name of the HDF5 file where tally results will be stored.
+        Parameters
+        ----------
+        directory : string
+            Path to the directory containing case_#.py files.
+        start : int
+            The starting case number.
+        end : int
+            The ending case number. If None, it is set to the largest case number found in the directory.
+        use_numba : bool
+            If True, passes "--mode=numba" as an argument when running the script.
+        tally_filename : string
+            Name of the HDF5 file where tally results will be stored.
         """
         if end is None:
             case_numbers = [int(f.split("_")[1].split(".")[0]) for f in os.listdir(directory) if f.startswith("case_") and f.endswith(".py")]
@@ -341,13 +455,18 @@ class RunMcdc:
             else:
                 print(f"Warning: {case_file} not found.")
     
-    def collect_tally(self, directory: str, case_num: int, tally_path: str):
+    def collect_tally(self, directory, case_num, tally_path):
         """
         Collects the tally data from output.h5 and stores it in the tally HDF5 file.
 
-        :param directory: Path to the directory containing the output.h5 file.
-        :param case_num: The case number for which the tally is being collected.
-        :param tally_path: Path to the HDF5 file where tally results will be stored.
+        Parameters
+        ----------
+        directory : string
+            Path to the directory containing the output.h5 file.
+        case_num : int
+            The case number for which the tally is being collected.
+        tally_path : string
+            Path to the HDF5 file where tally results will be stored.
         """
         output_file = os.path.join(directory, "output.h5")
         if not os.path.isfile(output_file):
