@@ -5,7 +5,7 @@ import numpy as np
 import h5py
 
 def add_to_training_data(n_it, clear_first = False):
-    filename = "test_input_grid.h5"
+    filename = "input_parameters.h5"
     directory = "../../mcdc_inputs"
     for case in range(n_it):
         random_generate = generate.RandomGeneration(5,5,4)
@@ -49,10 +49,10 @@ def convert_to_mcdc_input(filepath, i_start=0, i_end=None):
             
             generate_input.write_to_file(filename=f"case_{case}.py", directory="../../mcdc_inputs")
 
-def run_mcdc_cases(directory):
+def run_mcdc_cases(directory, start=0):
     run_cases = generate.RunMcdc()
-    run_cases.run_cases(directory, use_numba = False)
+    run_cases.run_cases(directory, start = start, use_numba = True)
 
-add_to_training_data(4, True)
-convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
-run_mcdc_cases("../../mcdc_inputs/")
+#add_to_training_data(10000, True)
+#convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
+run_mcdc_cases("../../mcdc_inputs/", start=700)
