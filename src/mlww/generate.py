@@ -12,6 +12,7 @@ class InputGeneration:
             "cells": [],
             "source": [],
             "tally": [],
+            "ww": [],
             "settings": []
         }
 
@@ -28,6 +29,7 @@ class InputGeneration:
         self.set_source()
         self.set_tally()
         self.set_settings()
+        self.set_ww()
         self._add_run()
 
     def set_materials(self, lines=None):
@@ -119,6 +121,22 @@ class InputGeneration:
             f"mcdc.setting(N_particle={N_particle})\n",
         ]
         self._update_lines()
+    
+    def set_ww(self, grid=None):
+        if grid is None:
+            self.sections["ww"] = [
+                " ",
+            ]
+        else:
+            gridx = grid.shape[0]
+            gridy = grid.shape[1]
+            gridz = grid.shape[2]
+            formatted_grid = np.array2string(grid, separator=', ', threshold=np.inf).replace('\n', '')  # Ensure proper formatting
+            self.sections["ww"] = [
+                "# Set weight window mesh",
+                f"mcdc.weight_window(x=np.linspace(0,{gridx},{gridx+1}), y=np.linspace(0,{gridy},{gridy+1}), z=np.linspace(0,{gridz},{gridz+1}), window=np.array({formatted_grid}))\n\n"
+            ]
+        self._update_lines()
 
     def _add_run(self):
         self.run_line = ["# Run", "mcdc.run()"]
@@ -129,7 +147,7 @@ class InputGeneration:
             "import numpy as np",
             "import mcdc\n",
         ]
-        for section in ["materials", "surfaces", "cells", "source", "tally", "settings"]:
+        for section in ["materials", "surfaces", "cells", "source", "tally", "ww", "settings"]:
             self.lines.extend(self.sections[section])
         self.lines.extend(self.run_line)
 
@@ -347,6 +365,11 @@ class RandomGeneration:
                     self.grid[x, y, z] = blob_values
                     out_of_range = False
 
+    def set_grid(self, grid):
+        """
+        Provide a predetermined grid
+        """
+        self.grid = grid
     
     def get_grid(self):
         """
@@ -359,7 +382,7 @@ class RandomGeneration:
         """
         return self.grid
     
-    def plot_2d_grid(self, data_grid, data_type=0, z_slice=0):
+    def plot_2d_grid(self, data_grid, data_type=0, z_slice=0, title=None):
         """
         Plots a 2D heatmap of the grid for the specified data type.
         data_type: 0 (Capture Cross Section), 1 (Scattering Cross Section), or 2 (Source Strength)
@@ -383,7 +406,10 @@ class RandomGeneration:
         plt.colorbar(label=['Capture Cross Section', 'Scattering Cross Section', 'Source Strength'][data_type])
         plt.xlabel("X Axis")
         plt.ylabel("Y Axis")
-        plt.title(f"2D Grid Visualization - {['Capture Cross Section', 'Scattering Cross Section', 'Source Strength'][data_type]}")
+        if title is None:
+            plt.title(f"2D Grid Visualization - {['Capture Cross Section', 'Scattering Cross Section', 'Source Strength'][data_type]}")
+        else:
+            plt.title(title)
         plt.show()
     
     def write_to_hdf5(self, filename, directory=None, wipe=False):
@@ -422,7 +448,7 @@ class RandomGeneration:
 
 
 class RunMcdc:
-    def run_cases(self, directory, start=0, end=None, use_numba=True, tally_filename="tally_results.h5"):
+    def run_cases(self, directory, start=0, end=None, use_numba=True, save_output=False, tally_filename="tally_results.h5"):
         """
         Runs the case_#.py files in the specified directory within the given range.
 
@@ -447,11 +473,15 @@ class RunMcdc:
         tally_path = os.path.join(directory, tally_filename)
         
         for case_num in range(start, end + 1):
+            if save_output:
+                args = [arg for arg in args if not arg.startswith("--output=")]  # Remove existing --output= args
+                args.append(f"--output=case_{case_num}")  # Add the new output argument
             case_file = f"case_{case_num}.py"
             if os.path.isfile(os.path.join(directory, case_file)):
                 print(f"Running {case_file} with arguments: {args} in directory {directory}")
                 subprocess.run(["python", case_file] + args, check=True, cwd=directory)
-                self.collect_tally(directory, case_num, tally_path)
+                if save_output == False:
+                    self.collect_tally(directory, case_num, tally_path)
             else:
                 print(f"Warning: {case_file} not found.")
     

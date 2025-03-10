@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import mlww.generate as generate
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,17 +16,6 @@ class NeutronDataset(Dataset):
     def load_data(self, input_filepath, output_filepath, start_idx, end_idx):
         """
         Load the data from the input and output hdf5 files
-
-        Parameters
-        ----------
-        input_filepath : string
-            Path to the hdf5 file that contains the input parameters
-        output_filepath : string
-            Path to the hdf5 file that contains the output tally data
-        start_idx : int
-            Lower case number to start at
-        end_idx : int
-            Upper case number to end at
         """
         with h5py.File(output_filepath, 'r') as f:
             case_numbers = sorted([int(key.split('_')[1]) for key in f.keys()])
@@ -39,13 +29,49 @@ class NeutronDataset(Dataset):
             outputs = [f[f'case_{i}'][()] for i in range(start_idx, end_idx + 1) if f'case_{i}' in f]
             outputs = np.array(outputs)
 
-        return torch.tensor(inputs, dtype=torch.float32), torch.tensor(outputs, dtype=torch.float32)
+        return inputs, outputs
+    
+    def normalize_source(self):
+        """
+        Normalize the source strength (index 2 in input parameters) for each case
+        so that the sum over all (x, y, z) cells is 1.
+        """
+        source_strengths = self.input_data[..., 2]  # Extract source strength values
+        total_source = np.sum(source_strengths, axis=(1, 2, 3), keepdims=True)  # Sum over x, y, z
+        total_source[total_source == 0] = 1  # Avoid division by zero
+        self.input_data[..., 2] /= total_source  # Normalize
 
+    def normalize_results(self):
+        """
+        Normalize the output data for each case so that the maximum value in each case is 1.
+        """
+        max_values = np.max(self.output_data, axis=(1, 2, 3), keepdims=True)  # Max over x, y, z
+        max_values[max_values == 0] = 1  # Avoid division by zero
+        self.output_data /= max_values  # Normalize
+
+    def normalize_xs(self):
+        """
+        Normalize the capture cross section (index 0) for each case so that the maximum in each case is 1.
+        The scattering cross section (index 1) is scaled by the same factor to maintain its ratio with capture.
+        """
+        max_capture = np.max(self.input_data[..., 0], axis=(1, 2, 3), keepdims=True)  # Max over x, y, z
+        max_capture[max_capture == 0] = 1  # Avoid division by zero
+        self.input_data[..., 0] /= max_capture  # Normalize capture cross section
+        self.input_data[..., 1] /= max_capture  # Scale scatter cross section by the same factor
+    
+    def to_torch(self):
+        """
+        Convert input and output data to torch tensors
+        """
+        self.input_data = torch.tensor(self.input_data, dtype=torch.float32)
+        self.output_data = torch.tensor(self.output_data, dtype=torch.float32)
+    
     def __len__(self):
         return len(self.input_data)
 
     def __getitem__(self, idx):
         return self.input_data[idx], self.output_data[idx]
+
 
 class CNNModel(nn.Module):
     def __init__(self):
@@ -135,8 +161,8 @@ class TrainCNN:
         plt.plot(range(1, len(self.train_errors) + 1), self.train_errors, label='Training Error (%)')
         plt.plot(range(1, len(self.val_errors) + 1), self.val_errors, label='Validation Error (%)')
         plt.xlabel('Epochs')
-        plt.ylabel('Error (%)')
-        plt.title('Training and Validation Error Over Epochs')
+        plt.ylabel('Mean Error (%)')
+        plt.title('Training and Validation Mean Error Over Epochs')
         plt.legend()
         plt.show()
     
@@ -175,7 +201,7 @@ class ModelLoader:
             output_tensor = self.model(input_tensor)
         return output_tensor.squeeze(0).cpu().numpy()
 
-    def compare_flux(self, input_filepath, output_filepath, case_number=0):
+    def compare_flux(self, input_filepath, output_filepath, case_number=0, normalize_source = True, normalize_results = True, normalize_xs = True):
         """
         Produce the actual flux and predicted flux for a given case in the training data
 
@@ -193,15 +219,23 @@ class ModelLoader:
         numpy.ndarray, numpy.ndarray
             actual output of the MC/DC simulation and predicted output of the machine learning model
         """
-        case_key = f"case_{case_number}"
-        with h5py.File(input_filepath, 'r') as f:
-            if case_key not in f:
-                raise ValueError(f"Case {case_number} not found in input file.")
-            input_data = f[case_key][()]
-        with h5py.File(output_filepath, 'r') as f:
-            if case_key not in f:
-                raise ValueError(f"Case {case_number} not found in output file.")
-            actual_output = f[case_key][()]
+        data = NeutronDataset(input_filepath, output_filepath, start_idx=case_number, end_idx=case_number)
+        if normalize_source:
+            data.normalize_source()
+        if normalize_results:
+            data.normalize_results()
+        if normalize_xs:
+            data.normalize_xs()
+        actual_output = data.output_data[0,:,:,:]
+        input_data = data.input_data[0,:,:,:,:]
         
         predicted_output = self.predict_flux(input_data)
         return actual_output, predicted_output
+    
+    def plot_compare_flux(self, actual_output, predicted_output, z_slice=0):
+        output = np.expand_dims(actual_output, axis=-1)
+        predicted = np.expand_dims(predicted_output, axis=-1)
+        sim_plot = generate.RandomGeneration(output.shape[0],output.shape[1],output.shape[2])
+        pred_plot = generate.RandomGeneration(predicted.shape[0],predicted.shape[1],predicted.shape[2])
+        sim_plot.plot_2d_grid(output, data_type=0, z_slice=z_slice, title="Simulated Neutron Flux")
+        pred_plot.plot_2d_grid(predicted, data_type=0, z_slice=z_slice, title="Predicted Neutron Flux")

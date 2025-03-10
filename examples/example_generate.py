@@ -4,9 +4,7 @@ import mlww.generate as generate
 import numpy as np
 import h5py
 
-def add_to_training_data(n_it, clear_first = False):
-    filename = "input_parameters.h5"
-    directory = "../../mcdc_inputs"
+def add_to_training_data(n_it, filename = "input_parameters.h5", directory = "../../mcdc_inputs", clear_first = False):
     for case in range(n_it):
         random_generate = generate.RandomGeneration(5,5,4)
         random_generate.randomize_structure()
@@ -53,6 +51,6 @@ def run_mcdc_cases(directory, start=0):
     run_cases = generate.RunMcdc()
     run_cases.run_cases(directory, start = start, use_numba = True)
 
-#add_to_training_data(10000, True)
+#add_to_training_data(10000, clear_first = True)
 #convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
-run_mcdc_cases("../../mcdc_inputs/", start=870)
+run_mcdc_cases("../../mcdc_inputs/", start=1803)
