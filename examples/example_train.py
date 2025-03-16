@@ -31,7 +31,7 @@ def compare_results(case_num):
 
 
 
-#train_CNN_model(val_cutoff = 1999, n_epochs=50)
+train_CNN_model(val_cutoff = 5, n_epochs=50)
 compare_results(case_num=0)
 
 

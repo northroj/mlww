@@ -51,6 +51,6 @@ def run_mcdc_cases(directory, start=0):
     run_cases = generate.RunMcdc()
     run_cases.run_cases(directory, start = start, use_numba = True)
 
-#add_to_training_data(10000, clear_first = True)
-#convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
+add_to_training_data(10, clear_first = True)
+convert_to_mcdc_input("../../mcdc_inputs/input_parameters.h5")
 run_mcdc_cases("../../mcdc_inputs/", start=1803)
