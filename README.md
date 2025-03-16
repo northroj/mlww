@@ -1,3 +1,5 @@
+[![Testing Suite](https://github.com/northroj/mlww/actions/workflows/run-tests.yml/badge.svg)](https://github.com/northroj/mlww/actions/workflows/run-tests.yml)
+
 # mlww
 
 Machine learning weight window generation for Monte Carlo neutron transport.
