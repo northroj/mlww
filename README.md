@@ -28,7 +28,7 @@ The examples folder contains prebuilt scripts to exercise the code.
 
 - example_generate.py randomly generates input grids for the simulations, builds the MC/DC input decks for each random case, performs MC/DC simulations to collect flux tallies, and stores the input and output data in hdf5 files for use with the machine learning models.
 - example_train.py trains a CNN on the data files, calculates training and validation accuracy and saves the model to the models folder.
-- example_use.py uses the default model included in the repository to predict the flux and create weight windows for an example input generation. The problem is simulated in MC/DC with and without the weight windows to compare efficiency gains.
+- example_use.py uses the default model included in the repository to predict the flux and create weight windows for an example input generation. The problem is simulated in MC/DC with and without the weight windows to compare efficiency gains. *<span style="color:#FF5733"> This is recommended for basic use with the pretrained model included in the repository. Running example_generate will take a long time to produce enough results to train a new model on. </span>*
 - example_test.py just runs the testing suite that exists in the tests folder
 
 
