@@ -1,4 +1,4 @@
-[![Testing Suite](https://github.com/northroj/mlww/actions/workflows/run-tests.yml/badge.svg)](https://github.com/northroj/mlww/actions/workflows/run-tests.yml)
+[![Testing Suite](https://github.com/northroj/mlww/actions/workflows/run-tests.yml/badge.svg)](https://github.com/northroj/mlww/actions/workflows/run-tests.yml)   [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15033855.svg)](https://doi.org/10.5281/zenodo.15033855)
 
 # mlww
 
